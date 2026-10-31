@@ -204,7 +204,7 @@ void setup() {
   enterGreenTime = millis();
 }
 
-bool checkTimestamp(int epsilon){
+bool checkTimestamp(int epsilon) {
   int now = millis();
   for(int i = 0; i < N_OF_DEVICES; i++) {
     // ignore master's own ID
@@ -243,17 +243,19 @@ void masterLoop() {
       masterTime = now;
 
       direction = !direction;
-      int upDirection = (direction ? MSGTYPE_UP_HORIZONTAL
-                                   : MSGTYPE_UP_VERTICAL);
+      int msgType = (direction ? MSGTYPE_UP_HORIZONTAL
+                               : MSGTYPE_UP_VERTICAL);
 
       Msg msg;
       msg.id = 0;
-      msg.msgType = upDirection;
+      msg.msgType = msgType;
 
       espmesh->broadcast(&msg, sizeof(Msg));
 
-      receiveUpMsg(upDirection);
+      receiveUpMsg(msgType);
     }
+
+    // TODO checkTimestamp
   }
 }
 
