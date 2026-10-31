@@ -131,18 +131,26 @@ void onMsg(const EspMeshEvent &event) {
 void onMeshEvent(const EspMeshEvent &event) {
   switch(event.type) {
     case EspMeshEventType::Connected:
+      if(DEBUG)
+        Serial.printf("MeshEvent Connected\n");
       isMaster = false;
       break;
 
     case EspMeshEventType::Disconnected:
+      if(DEBUG)
+        Serial.printf("MeshEvent Disconnected\n");
       setState(STATE_CONFIG);
       break;
 
     case EspMeshEventType::BecameRoot:
+      if(DEBUG)
+        Serial.printf("MeshEvent BecameRoot\n");
       isMaster = true;
       break;
 
     case EspMeshEventType::Message:
+      if(DEBUG)
+        Serial.printf("MeshEvent Message\n");
       onMsg(event);
       break;
 
