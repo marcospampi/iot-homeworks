@@ -3,192 +3,135 @@
 #define SSID "iotProjectZGroup"
 #define PASSWORD "marcotiamo"
 
+#define DEVICE_NUMBER 4
+
+enum State {
+  STATE_CONFIG,
+  STATE_ACTIVE_GREEN,
+  STATE_ACTIVE_RED
+};
+
+enum MsgType {
+  MSGTYPE_ACK,
+  MSGTYPE_UP_ORIZZONTAL,
+  MSGTYPE_UP_VERTICAL,
+  MSGTYPE_ERROR
+};
+
+__attribute__((packed)) struct Msg {
+  uint8_t msgType;
+  uint8_t id;
+};
+
 int state;
 bool isMaster;
 bool isVertical;
 
 int enterGreenTime;
-int timestamp[4];
+int timestamp[DEVICE_NUMBER] = { 0 };
 int masterTime;
 
 int direction;
-
 uint8_t id;
 
-enum COLOR{
-  RED,
-  YELLOW,
-  GREEN
-};
-
-enum STATE{
-  CONFIG,
-  ACTIVE_GREEN,
-  ACTIVE_RED
-};
-
-enum MsgType{
-  ACK,
-  UP_ORIZZONTAL,
-  UP_VERTICAL,
-  ERROR
-};
-
-__attribute__((packed)) struct Msg{
-  uint8_t msgType;
-  uint8_t id;
-};
-
-void config(){
-  if(IoTBoard::runEvery(1000,0)){
-    digitalWrite(LED_YELLOW,!digitalRead(LED_YELLOW));
-  }
-
+void setLEDs(int red, int yellow, int green) {
+  digitalWrite(LED_RED,    red);
+  digitalWrite(LED_YELLOW, yellow);
+  digitalWrite(LED_GREEN,  green);
 }
 
-void activeGreen(){
-  uint64_t currentTime=millis();
-
-  if(currentTime-enterGreenTime<4000){
-    digitalWrite(LED_RED,LOW);
-    digitalWrite(LED_GREEN,HIGH);
-    digitalWrite(LED_YELLOW,LOW);
-  }
-  else if(currentTime-enterGreenTime<5000){
-    digitalWrite(LED_RED,LOW);
-    digitalWrite(LED_GREEN,LOW);
-    digitalWrite(LED_YELLOW,YELLOW);
-  }
-  else{
-    state=ACTIVE_RED;
-  }
+void config() {
+  if(IoTBoard::runEvery(1000, 0))
+    setLEDs(0, !digitalRead(LED_YELLOW), 0);
 }
 
-void activeRed(){
-  digitalWrite(LED_RED,HIGH);
-  digitalWrite(LED_GREEN,LOW);
-  digitalWrite(LED_YELLOW,LOW);
+void activeGreen() {
+  uint64_t currentTime = millis();
+
+  if(currentTime-enterGreenTime < 4000)
+    setLEDs(0, 0, 1);
+  else if(currentTime-enterGreenTime < 5000)
+    setLEDs(0, 1, 0);
+  else
+    state = STATE_ACTIVE_RED;
 }
 
-void sendAck(){
+void activeRed() {
+  setLEDs(1, 0, 0);
+}
 
+void sendAck() {
   Msg msg;
-
-  msg.id=id;
-  msg.msgType=ACK;
+  msg.id = id;
+  msg.msgType = MSGTYPE_ACK;
 
   espmesh->sendToRoot(&msg,sizeof(msg));
-
 }
 
-void setState(int nextState){
-
-  switch (nextState)
-        {
-
-        case UP_VERTICAL:
-          if(isVertical==true){
-            enterGreenTime=millis();
-            state=ACTIVE_GREEN;
-          }else{
-            state=ACTIVE_RED;
-          }
-          break;
-
-        case UP_ORIZZONTAL:
-          if(isVertical==false){
-            enterGreenTime=millis();
-            state=ACTIVE_GREEN;
-          }else{
-            state=ACTIVE_RED;
-          }
-          break;
-
-        case ERROR:
-          state=CONFIG;
-          break;
-        }
-
+void receiveUpMsg(bool vertical) {
+  if(isVertical == vertical) {
+    enterGreenTime = millis();
+    state = STATE_ACTIVE_GREEN;
+  } else {
+    state = STATE_ACTIVE_RED;
+  }
 }
 
 void onMsg(const EspMeshEvent &event){
-  if(event.len==sizeof(Msg)){
+  if(event.len != sizeof(Msg))
+    return;
+  const Msg *msg = (const Msg *) event.data;
 
-    const Msg *msg = (const Msg *) event.data;
-
-    if(isMaster){
-
-      if(msg->msgType==ACK){
-
-        uint8_t id=msg->id;
-
-        if(id<4)
-          timestamp[id]=millis();
-
-      }
-
+  if(isMaster) {
+    if(msg->msgType == MSGTYPE_ACK) {
+      uint8_t id = msg->id;
+      if(id < DEVICE_NUMBER)
+        timestamp[id] = millis();
     }
+  } else {
+    timestamp[0] = millis();
 
-    else{
+    switch (msg->msgType) {
+      case MSGTYPE_UP_VERTICAL:
+        receiveUpMsg(true);
+        break;
 
-      timestamp[0]=millis();
+      case MSGTYPE_UP_ORIZZONTAL:
+        receiveUpMsg(false);
+        break;
 
-        switch (msg->msgType)
-        {
-
-        case UP_VERTICAL:
-          if(isVertical==true){
-            enterGreenTime=millis();
-            state=ACTIVE_GREEN;
-          }else{
-            state=ACTIVE_RED;
-          }
-          break;
-
-        case UP_ORIZZONTAL:
-          if(isVertical==false){
-            enterGreenTime=millis();
-            state=ACTIVE_GREEN;
-          }else{
-            state=ACTIVE_RED;
-          }
-          break;
-
-        case ERROR:
-          state=CONFIG;
-          break;
-        }
-
-        sendAck();
-
-      }
+      case MSGTYPE_ERROR:
+        state = STATE_CONFIG;
+        break;
+    }
+    sendAck();
   }
 }
 
-void onMeshEvent(const EspMeshEvent &event){
-
-  switch(event.type){
-
+void onMeshEvent(const EspMeshEvent &event) {
+  switch(event.type) {
     case EspMeshEventType::Connected:
-      isMaster=false;
+      isMaster = false;
       break;
 
     case EspMeshEventType::Disconnected:
-      state=CONFIG;
+      state = STATE_CONFIG;
       break;
 
     case EspMeshEventType::BecameRoot:
-      isMaster=true;
+      isMaster = true;
       break;
 
     case EspMeshEventType::Message:
       onMsg(event);
       break;
-  }
-};
 
-void setup()
-{
+    default:
+      break;
+  }
+}
+
+void setup() {
   sleep(3);
 
   IoTBoard::init_serial();
@@ -196,93 +139,87 @@ void setup()
   IoTBoard::init_display();
   IoTBoard::init_leds();
 
-  IoTBoard::init_espmesh(SSID,PASSWORD,onMeshEvent);
+  IoTBoard::init_espmesh(SSID, PASSWORD, onMeshEvent);
 
-  state=ACTIVE_GREEN;
-  isMaster=false;
-  isVertical=false;
+  state = STATE_CONFIG;
+  isMaster = false;
+  isVertical = false;
 
-  enterGreenTime=millis();
-
-  memset(timestamp,0,sizeof(timestamp));
-
+  enterGreenTime = millis();
 }
 
 bool checkTimestamp(int epsilon){
-
-  int now=millis();
-
-  for(int i=0;i<4;i++){
-
-    if(i==id)
+  int now = millis();
+  for(int i = 0; i < 4; i++) {
+    // ignore master's own ID
+    if(i == id)
       continue;
 
-    if(now-timestamp[i]>epsilon){
+    if(now - timestamp[i] > epsilon) {
       return false;
     }
   }
   return true;
 }
 
-void master(){
-
-  if(state==CONFIG){
-
+void masterLoop() {
+  if(state == STATE_CONFIG) {
     Msg msg;
-    msg.id=id;
-    msg.msgType=ERROR;
+    msg.id = id;
+    msg.msgType = MSGTYPE_ERROR;
 
-    if(IoTBoard::runEvery(250,1))
-      espmesh->broadcast(&msg,sizeof(msg));
+    if(IoTBoard::runEvery(250, 1))
+      espmesh->broadcast(&msg, sizeof(msg));
 
-    if(checkTimestamp(500)){
-      state=ACTIVE_RED;
-      masterTime=millis();
+    if(checkTimestamp(500)) {
+      state = STATE_ACTIVE_RED;
+      masterTime = millis();
     }
-
   }
-  if(state!=CONFIG){
 
-    int now=millis();
+  if(state != STATE_CONFIG) {
+    int now = millis();
 
-    if((now-masterTime>=6000)){
-      masterTime=now;
-      direction=!direction;
+    if((now - masterTime >= 6000)){
+      masterTime = now;
+
+      direction = !direction;
+      int upDirection = (direction ? MSGTYPE_UP_ORIZZONTAL
+                                   : MSGTYPE_UP_VERTICAL);
 
       Msg msg;
-      msg.msgType=(direction ? UP_ORIZZONTAL : UP_VERTICAL);
-      msg.id=0;
+      msg.id = 0;
+      msg.msgType = upDirection;
 
-      espmesh->broadcast(&msg,sizeof(Msg));
+      espmesh->broadcast(&msg, sizeof(Msg));
 
-      setState(msg.msgType);
-
+      receiveUpMsg(upDirection);
     }
-
   }
+}
 
+void slaveLoop() {
+  // TODO
 }
 
 void loop() {
-
-  switch(state){
-
-    case CONFIG:
+  switch(state) {
+    case STATE_CONFIG:
       config();
       break;
 
-    case ACTIVE_GREEN:
+    case STATE_ACTIVE_GREEN:
       activeGreen();
       break;
 
-    case ACTIVE_RED:
+    case STATE_ACTIVE_RED:
       activeRed();
       break;
   }
 
-  if(isMaster){
-    master();
-  }
-  //todo: slave();
+  if(isMaster)
+    masterLoop();
+  else
+    slaveLoop();
 
 }
