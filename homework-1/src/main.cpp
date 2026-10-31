@@ -5,7 +5,7 @@
 #define SSID "iotProjectZGroup"
 #define PASSWORD "marcotiamo"
 
-#define DEVICE_NUMBER 4
+#define N_OF_DEVICES 4
 
 enum State {
   STATE_CONFIG,
@@ -30,7 +30,7 @@ bool isMaster;
 bool isVertical;
 
 int enterGreenTime;
-int timestamp[DEVICE_NUMBER] = { 0 };
+int timestamp[N_OF_DEVICES] = { 0 };
 int masterTime;
 
 int direction;
@@ -96,7 +96,7 @@ void onMsg(const EspMeshEvent &event) {
   if(isMaster) {
     if(msg->msgType == MSGTYPE_ACK) {
       uint8_t id = msg->id;
-      if(id < DEVICE_NUMBER)
+      if(id < N_OF_DEVICES)
         timestamp[id] = millis();
     }
   } else {
@@ -161,7 +161,7 @@ void setup() {
 
 bool checkTimestamp(int epsilon){
   int now = millis();
-  for(int i = 0; i < 4; i++) {
+  for(int i = 0; i < N_OF_DEVICES; i++) {
     // ignore master's own ID
     if(i == id)
       continue;
