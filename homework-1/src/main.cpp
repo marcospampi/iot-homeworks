@@ -76,8 +76,13 @@ void sendAck() {
   espmesh->sendToRoot(&msg,sizeof(msg));
 }
 
-void receiveUpMsg(bool vertical) {
-  if(isVertical == vertical) {
+void receiveUpMsg(int msgType) {
+  bool shouldTurnGreen = (
+    (isVertical  && msgType == MSGTYPE_UP_VERTICAL) ||
+    (!isVertical && msgType == MSGTYPE_UP_HORIZONTAL)
+  );
+
+  if(shouldTurnGreen) {
     setState(STATE_ACTIVE_GREEN);
     enterGreenTime = millis();
   } else {
