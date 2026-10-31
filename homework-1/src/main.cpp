@@ -150,7 +150,9 @@ void setup() {
   IoTBoard::init_display();
   IoTBoard::init_leds();
 
+  Serial.printf("Initializing mesh... ");
   IoTBoard::init_espmesh(SSID, PASSWORD, onMeshEvent);
+  Serial.printf("Done\n");
 
   setState(STATE_CONFIG);
   isMaster = false;
@@ -217,6 +219,8 @@ void slaveLoop() {
 }
 
 void loop() {
+  espmesh->update();
+
   switch(state) {
     case STATE_CONFIG:
       config();
