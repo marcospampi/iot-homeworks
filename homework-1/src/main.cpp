@@ -112,13 +112,13 @@ void onMsg(const EspMeshEvent &event) {
 
     switch (msg->msgType) {
       case MSGTYPE_UP_VERTICAL:
-        receiveUpMsg(true);
+        receiveUpMsg(MSGTYPE_UP_VERTICAL);
         if(DEBUG)
           Serial.printf("Received UP_VERTICAL\n");
         break;
 
       case MSGTYPE_UP_HORIZONTAL:
-        receiveUpMsg(false);
+        receiveUpMsg(MSGTYPE_UP_HORIZONTAL);
         if(DEBUG)
           Serial.printf("Received UP_HORIZONTAL\n");
         break;
