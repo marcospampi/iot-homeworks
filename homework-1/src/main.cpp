@@ -15,7 +15,7 @@ enum State {
 
 enum MsgType {
   MSGTYPE_ACK,
-  MSGTYPE_UP_ORIZZONTAL,
+  MSGTYPE_UP_HORIZONTAL,
   MSGTYPE_UP_VERTICAL,
   MSGTYPE_ERROR
 };
@@ -34,7 +34,7 @@ int timestamp[N_OF_DEVICES] = { 0 };
 int masterTime;
 
 int direction;
-uint8_t id;
+int id;
 
 void setState(State newState) {
   if(DEBUG)
@@ -98,6 +98,9 @@ void onMsg(const EspMeshEvent &event) {
       uint8_t id = msg->id;
       if(id < N_OF_DEVICES)
         timestamp[id] = millis();
+
+      if(DEBUG)
+        Serial.printf("ACK from id=%d\n", id);
     }
   } else {
     timestamp[0] = millis();
@@ -105,14 +108,20 @@ void onMsg(const EspMeshEvent &event) {
     switch (msg->msgType) {
       case MSGTYPE_UP_VERTICAL:
         receiveUpMsg(true);
+        if(DEBUG)
+          Serial.printf("Received UP_VERTICAL\n");
         break;
 
-      case MSGTYPE_UP_ORIZZONTAL:
+      case MSGTYPE_UP_HORIZONTAL:
         receiveUpMsg(false);
+        if(DEBUG)
+          Serial.printf("Received UP_HORIZONTAL\n");
         break;
 
       case MSGTYPE_ERROR:
         setState(STATE_CONFIG);
+        if(DEBUG)
+          Serial.printf("Received ERROR\n");
         break;
     }
     sendAck();
@@ -142,6 +151,24 @@ void onMeshEvent(const EspMeshEvent &event) {
   }
 }
 
+void onBtn1Released(uint8_t pinBtn){
+  Serial.println("BTN 1 pressed");
+
+  id++;
+  if(id >= N_OF_DEVICES)
+    id = 0;
+  Serial.printf("Device ID changed to %d\n", id);
+}
+
+void onBtn2Released(uint8_t pinBtn){
+  Serial.println("BTN 2 pressed");
+
+  id--;
+  if(id < 0)
+    id = N_OF_DEVICES - 1;
+  Serial.printf("Device ID changed to %d\n", id);
+}
+
 void setup() {
   sleep(3);
 
@@ -149,6 +176,9 @@ void setup() {
   IoTBoard::init_buttons();
   IoTBoard::init_display();
   IoTBoard::init_leds();
+
+  buttons->onBtn1Release(onBtn1Released);
+  buttons->onBtn2Release(onBtn2Released);
 
   Serial.printf("Initializing mesh... ");
   IoTBoard::init_espmesh(SSID, PASSWORD, onMeshEvent);
@@ -200,7 +230,7 @@ void masterLoop() {
       masterTime = now;
 
       direction = !direction;
-      int upDirection = (direction ? MSGTYPE_UP_ORIZZONTAL
+      int upDirection = (direction ? MSGTYPE_UP_HORIZONTAL
                                    : MSGTYPE_UP_VERTICAL);
 
       Msg msg;
@@ -219,6 +249,7 @@ void slaveLoop() {
 }
 
 void loop() {
+  buttons->update();
   espmesh->update();
 
   switch(state) {
