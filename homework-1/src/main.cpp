@@ -1,5 +1,7 @@
 #include <iot_board.h>
 
+#define DEBUG 1
+
 #define SSID "iotProjectZGroup"
 #define PASSWORD "marcotiamo"
 
@@ -34,6 +36,12 @@ int masterTime;
 int direction;
 uint8_t id;
 
+void setState(State newState) {
+  if(DEBUG)
+    Serial.printf("setting state %d\n", newState);
+  state = newState;
+}
+
 void setLEDs(int red, int yellow, int green) {
   digitalWrite(LED_RED,    red);
   digitalWrite(LED_YELLOW, yellow);
@@ -53,7 +61,7 @@ void activeGreen() {
   else if(currentTime-enterGreenTime < 5000)
     setLEDs(0, 1, 0);
   else
-    state = STATE_ACTIVE_RED;
+    setState(STATE_ACTIVE_RED);
 }
 
 void activeRed() {
@@ -70,14 +78,17 @@ void sendAck() {
 
 void receiveUpMsg(bool vertical) {
   if(isVertical == vertical) {
+    setState(STATE_ACTIVE_GREEN);
     enterGreenTime = millis();
-    state = STATE_ACTIVE_GREEN;
   } else {
-    state = STATE_ACTIVE_RED;
+    setState(STATE_ACTIVE_RED);
   }
 }
 
-void onMsg(const EspMeshEvent &event){
+void onMsg(const EspMeshEvent &event) {
+  if(DEBUG)
+    Serial.printf("MeshEvent: len=%d\n", event.len);
+
   if(event.len != sizeof(Msg))
     return;
   const Msg *msg = (const Msg *) event.data;
@@ -101,7 +112,7 @@ void onMsg(const EspMeshEvent &event){
         break;
 
       case MSGTYPE_ERROR:
-        state = STATE_CONFIG;
+        setState(STATE_CONFIG);
         break;
     }
     sendAck();
@@ -115,7 +126,7 @@ void onMeshEvent(const EspMeshEvent &event) {
       break;
 
     case EspMeshEventType::Disconnected:
-      state = STATE_CONFIG;
+      setState(STATE_CONFIG);
       break;
 
     case EspMeshEventType::BecameRoot:
@@ -141,7 +152,7 @@ void setup() {
 
   IoTBoard::init_espmesh(SSID, PASSWORD, onMeshEvent);
 
-  state = STATE_CONFIG;
+  setState(STATE_CONFIG);
   isMaster = false;
   isVertical = false;
 
@@ -164,15 +175,18 @@ bool checkTimestamp(int epsilon){
 
 void masterLoop() {
   if(state == STATE_CONFIG) {
-    Msg msg;
-    msg.id = id;
-    msg.msgType = MSGTYPE_ERROR;
-
-    if(IoTBoard::runEvery(250, 1))
+    if(IoTBoard::runEvery(250, 1)) {
+      Msg msg;
+      msg.id = id;
+      msg.msgType = MSGTYPE_ERROR;
       espmesh->broadcast(&msg, sizeof(msg));
 
+      if(DEBUG)
+        Serial.printf("Sending config broadcast message");
+    }
+
     if(checkTimestamp(500)) {
-      state = STATE_ACTIVE_RED;
+      setState(STATE_ACTIVE_RED);
       masterTime = millis();
     }
   }
@@ -180,7 +194,7 @@ void masterLoop() {
   if(state != STATE_CONFIG) {
     int now = millis();
 
-    if((now - masterTime >= 6000)){
+    if((now - masterTime >= 6000)) {
       masterTime = now;
 
       direction = !direction;
