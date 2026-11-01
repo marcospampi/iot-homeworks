@@ -253,7 +253,7 @@ void masterLoop() {
     // send a RESYNC message every 250ms
     if(IoTBoard::runEvery(250, 1)) {
       Msg msg;
-      msg.id = semaphoreData.id;
+      msg.id = 0;
       msg.msgType = MSGTYPE_RESYNC;
 
       masterBroadcast(msg);
