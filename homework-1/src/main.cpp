@@ -18,7 +18,7 @@ enum MsgType {
   MSGTYPE_UP_HORIZONTAL=0,
   MSGTYPE_UP_VERTICAL=1,
   MSGTYPE_PING,
-  MSGTYPE_ERROR
+  MSGTYPE_RESYNC
 };
 
 enum Direction {
@@ -129,10 +129,10 @@ void onMsg(const EspMeshEvent &event) {
           Serial.printf("Received UP_HORIZONTAL\n");
         break;
 
-      case MSGTYPE_ERROR:
+      case MSGTYPE_RESYNC:
         setState(STATE_CONFIG);
         if(DEBUG)
-          Serial.printf("Received ERROR\n");
+          Serial.printf("Received RESYNC\n");
         break;
     }
   }
@@ -249,12 +249,14 @@ void masterBroadcast(const Msg &msg) {
 
 void masterLoop() {
   if(state == STATE_CONFIG) {
+    // send a RESYNC message every 250ms
     if(IoTBoard::runEvery(250, 1)) {
       Msg msg;
       msg.id = id;
-      msg.msgType = MSGTYPE_ERROR;
-      //espmesh->broadcast(&msg, sizeof(msg));
+      msg.msgType = MSGTYPE_RESYNC;
+
       masterBroadcast(msg);
+
       if(DEBUG)
         Serial.println("Sending config broadcast message");
     }
@@ -279,21 +281,18 @@ void masterLoop() {
       msg.id = 0;
       msg.msgType = msgType;
 
-     // espmesh->broadcast(&msg, sizeof(Msg));
       masterBroadcast(msg);
-
-      receiveUpMsg(msgType);
+      receiveUpMsg(msgType); // update the master's semaphore too
     }
 
-    if(!checkTimestamp(1000)){
+    if(!checkTimestamp(1000))
       setState(STATE_CONFIG);
-    }
-
   }
 }
 
 void slaveLoop() {
-  if(IoTBoard::runEvery(250,7)){
+  // send a PING message to master
+  if(IoTBoard::runEvery(250, 7)) {
     Msg msg;
     msg.id = id;
     msg.msgType = MSGTYPE_PING;
