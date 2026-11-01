@@ -116,8 +116,6 @@ void onMsg(const EspMeshEvent &event) {
         Serial.printf("PING from id=%d\n", id);
     }
   } else {
-    timestamp[0] = millis();
-
     switch (msg->msgType) {
       case MSGTYPE_UP_VERTICAL:
         receiveUpMsg(MSGTYPE_UP_VERTICAL);
@@ -204,6 +202,7 @@ void setup() {
   IoTBoard::init_espmesh(SSID, PASSWORD, onMeshEvent);
   Serial.printf("Done\n");
 
+  // set initial state
   setState(STATE_CONFIG);
   isMaster = false;
   direction=DIRECTION_HORIZONTAL;
