@@ -1,11 +1,12 @@
 #include <iot_board.h>
 
+#include "secrets.h"
+
 #define DEBUG 1
 
-#define SSID "iotProjectZGroup"
-#define PASSWORD "marcotiamo"
-
+#ifndef N_OF_DEVICES
 #define N_OF_DEVICES 4
+#endif
 
 enum State {
   STATE_CONFIG,
@@ -20,10 +21,10 @@ enum MsgType {
   MSGTYPE_ERROR
 };
 
-__attribute__((packed)) struct Msg {
+typedef struct __attribute__((packed))  {
   uint8_t msgType;
   uint8_t id;
-};
+} Msg;
 
 int state;
 bool isMaster;
@@ -40,6 +41,13 @@ void setState(State newState) {
   if(DEBUG)
     Serial.printf("setting state %d\n", newState);
   state = newState;
+}
+
+void write_display(const char *txt) {
+  display->clearDisplay();
+  display->setCursor(0,0);
+  display->print(txt);
+  display->display();
 }
 
 void setLEDs(int red, int yellow, int green) {
@@ -150,6 +158,7 @@ void onMeshEvent(const EspMeshEvent &event) {
     case EspMeshEventType::BecameRoot:
       if(DEBUG)
         Serial.printf("MeshEvent BecameRoot\n");
+      write_display("Sono master");
       isMaster = true;
       break;
 
@@ -158,7 +167,8 @@ void onMeshEvent(const EspMeshEvent &event) {
         Serial.printf("MeshEvent Message\n");
       onMsg(event);
       break;
-
+    case EspMeshEventType::ChildJoined:
+    case EspMeshEventType::ChildLeft:
     default:
       break;
   }
@@ -218,16 +228,39 @@ bool checkTimestamp(int epsilon) {
   return true;
 }
 
+void masterBroadcast(const Msg &msg) {
+  // TODO: puliziari
+  // Msg msg;
+  // msg.id = id;
+  // msg.msgType = eventTy;
+
+  int numofdevices = esp_mesh_get_routing_table_size();
+  if ( IoTBoard::runEvery(1000, 5)) {
+    Serial.printf("Number of devices is %d\n", numofdevices);
+  }
+  uint8_t me[6];
+  espmesh->getMac(me);
+
+  uint8_t nodes[numofdevices][6];
+  espmesh->getNodes(nodes, numofdevices);
+
+  for ( int i = 0; i < numofdevices; ++i ) {
+    // non controllo a me stesso
+    if ( memcmp(me, nodes[i], sizeof(uint8_t[6])) == 0 ) continue;
+    espmesh->sendTo(nodes[i], &msg, sizeof(Msg));
+  }
+}
+
 void masterLoop() {
   if(state == STATE_CONFIG) {
     if(IoTBoard::runEvery(250, 1)) {
       Msg msg;
       msg.id = id;
       msg.msgType = MSGTYPE_ERROR;
-      espmesh->broadcast(&msg, sizeof(msg));
-
+      //espmesh->broadcast(&msg, sizeof(msg));
+      masterBroadcast(msg);
       if(DEBUG)
-        Serial.printf("Sending config broadcast message");
+        Serial.println("Sending config broadcast message");
     }
 
     if(checkTimestamp(500)) {
@@ -250,7 +283,8 @@ void masterLoop() {
       msg.id = 0;
       msg.msgType = msgType;
 
-      espmesh->broadcast(&msg, sizeof(Msg));
+     // espmesh->broadcast(&msg, sizeof(Msg));
+      masterBroadcast(msg);
 
       receiveUpMsg(msgType);
     }
