@@ -27,21 +27,26 @@ enum Direction {
   DIRECTION_COUNT
 };
 
-typedef struct __attribute__((packed))  {
+typedef struct __attribute__((packed)) {
   uint8_t msgType;
   uint8_t id;
 } Msg;
 
+struct Semaphore {
+  int  id;
+  bool isMaster;
+
+  int direction;
+  int enterGreenTime;
+} semaphoreData;
+
+struct Game {
+  int upDirection;
+  int time;
+  int timestamp[N_OF_DEVICES];
+} gameData;
+
 int state;
-bool isMaster;
-int direction;
-int gameDirection;
-
-int enterGreenTime;
-int timestamp[N_OF_DEVICES] = { 0 };
-int masterTime;
-
-int id;
 
 void setState(State newState) {
   if(DEBUG)
@@ -68,11 +73,12 @@ void config() {
 }
 
 void activeGreen() {
-  uint64_t currentTime = millis();
+  const int now = millis();
+  const int greenTime = now - semaphoreData.enterGreenTime;
 
-  if(currentTime-enterGreenTime < 4000)
+  if(greenTime < 4000)
     setLEDs(0, 0, 1);
-  else if(currentTime-enterGreenTime < 5000)
+  else if(greenTime < 5000)
     setLEDs(0, 1, 0);
   else
     setState(STATE_ACTIVE_RED);
@@ -83,16 +89,9 @@ void activeRed() {
 }
 
 void receiveUpMsg(int msgType) {
-  bool shouldTurnGreen = (
-    (direction==msgType)
-  );
-  Serial.printf("dir=%d\n",int(direction));
-  Serial.printf("msgType=%d\n",int(msgType));
-  Serial.printf("shouldTG=%d\n",int(shouldTurnGreen));
-
-  if(shouldTurnGreen) {
+  if(semaphoreData.direction == msgType) {
     setState(STATE_ACTIVE_GREEN);
-    enterGreenTime = millis();
+    semaphoreData.enterGreenTime = millis();
   } else {
     setState(STATE_ACTIVE_RED);
   }
@@ -106,11 +105,11 @@ void onMsg(const EspMeshEvent &event) {
     return;
   const Msg *msg = (const Msg *) event.data;
 
-  if(isMaster) {
+  if(semaphoreData.isMaster) {
     if(msg->msgType == MSGTYPE_PING) {
-      uint8_t id = msg->id;
-      if(id < N_OF_DEVICES)
-        timestamp[id] = millis();
+      int id = msg->id;
+      if(id > 0 && id < N_OF_DEVICES)
+        gameData.timestamp[id] = millis();
 
       if(DEBUG)
         Serial.printf("PING from id=%d\n", id);
@@ -143,7 +142,7 @@ void onMeshEvent(const EspMeshEvent &event) {
     case EspMeshEventType::Connected:
       if(DEBUG)
         Serial.printf("MeshEvent Connected\n");
-      isMaster = false;
+      semaphoreData.isMaster = false;
       break;
 
     case EspMeshEventType::Disconnected:
@@ -156,7 +155,7 @@ void onMeshEvent(const EspMeshEvent &event) {
       if(DEBUG)
         Serial.printf("MeshEvent BecameRoot\n");
       write_display("Sono master");
-      isMaster = true;
+      semaphoreData.isMaster = true;
       break;
 
     case EspMeshEventType::Message:
@@ -174,17 +173,17 @@ void onMeshEvent(const EspMeshEvent &event) {
 void onBtn1Released(uint8_t pinBtn){
   Serial.println("BTN 1 pressed");
 
-  id++;
-  if(id >= N_OF_DEVICES)
-    id = 0;
-  Serial.printf("Device ID changed to %d\n", id);
+  semaphoreData.id++;
+  if(semaphoreData.id >= N_OF_DEVICES)
+    semaphoreData.id = 0;
+  Serial.printf("Device ID changed to %d\n", semaphoreData.id);
 }
 
 void onBtn2Released(uint8_t pinBtn){
   Serial.println("BTN 2 pressed");
 
-  direction=(direction+1)%DIRECTION_COUNT;
-  Serial.printf("Direction changed to %d\n", direction);
+  semaphoreData.direction = (semaphoreData.direction + 1) % DIRECTION_COUNT;
+  Serial.printf("Direction changed to %d\n", semaphoreData.direction);
 }
 
 void setup() {
@@ -204,20 +203,20 @@ void setup() {
 
   // set initial state
   setState(STATE_CONFIG);
-  isMaster = false;
-  direction=DIRECTION_HORIZONTAL;
-
-  enterGreenTime = millis();
+  semaphoreData.id             = 0;
+  semaphoreData.isMaster       = false;
+  semaphoreData.direction      = DIRECTION_HORIZONTAL;
+  semaphoreData.enterGreenTime = millis();
 }
 
 bool checkTimestamp(int epsilon) {
   int now = millis();
   for(int i = 0; i < N_OF_DEVICES; i++) {
     // ignore master's own ID
-    if(i == id)
+    if(i == semaphoreData.id)
       continue;
 
-    if(now - timestamp[i] > epsilon) {
+    if(now - gameData.timestamp[i] > epsilon) {
       return false;
     }
   }
@@ -252,7 +251,7 @@ void masterLoop() {
     // send a RESYNC message every 250ms
     if(IoTBoard::runEvery(250, 1)) {
       Msg msg;
-      msg.id = id;
+      msg.id = semaphoreData.id;
       msg.msgType = MSGTYPE_RESYNC;
 
       masterBroadcast(msg);
@@ -263,19 +262,19 @@ void masterLoop() {
 
     if(checkTimestamp(500)) {
       setState(STATE_ACTIVE_RED);
-      masterTime = millis();
+      gameData.time = millis();
     }
   }
 
   if(state != STATE_CONFIG) {
     int now = millis();
 
-    if((now - masterTime >= 6000)) {
-      masterTime = now;
+    if((now - gameData.time >= 6000)) {
+      gameData.time = now;
 
-      gameDirection = !gameDirection;
-      int msgType = (gameDirection ? MSGTYPE_UP_HORIZONTAL
-                               : MSGTYPE_UP_VERTICAL);
+      gameData.upDirection = !gameData.upDirection;
+      int msgType = (gameData.upDirection ? MSGTYPE_UP_HORIZONTAL
+                                          : MSGTYPE_UP_VERTICAL);
 
       Msg msg;
       msg.id = 0;
@@ -294,7 +293,7 @@ void slaveLoop() {
   // send a PING message to master
   if(IoTBoard::runEvery(250, 7)) {
     Msg msg;
-    msg.id = id;
+    msg.id = semaphoreData.id;
     msg.msgType = MSGTYPE_PING;
 
     espmesh->sendToRoot(&msg,sizeof(msg));
@@ -319,9 +318,8 @@ void loop() {
       break;
   }
 
-  if(isMaster)
+  if(semaphoreData.isMaster)
     masterLoop();
   else
     slaveLoop();
-
 }
