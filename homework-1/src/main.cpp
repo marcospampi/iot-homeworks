@@ -15,10 +15,16 @@ enum State {
 };
 
 enum MsgType {
-  MSGTYPE_ACK,
-  MSGTYPE_UP_HORIZONTAL,
-  MSGTYPE_UP_VERTICAL,
+  MSGTYPE_UP_HORIZONTAL=0,
+  MSGTYPE_UP_VERTICAL=1,
+  MSGTYPE_PING,
   MSGTYPE_ERROR
+};
+
+enum Direction {
+  DIRECTION_HORIZONTAL=0,
+  DIRECTION_VERTICAL=1,
+  DIRECTION_COUNT
 };
 
 typedef struct __attribute__((packed))  {
@@ -28,13 +34,13 @@ typedef struct __attribute__((packed))  {
 
 int state;
 bool isMaster;
-bool isVertical;
+int direction;
+int gameDirection;
 
 int enterGreenTime;
 int timestamp[N_OF_DEVICES] = { 0 };
 int masterTime;
 
-int direction;
 int id;
 
 void setState(State newState) {
@@ -76,19 +82,13 @@ void activeRed() {
   setLEDs(1, 0, 0);
 }
 
-void sendAck() {
-  Msg msg;
-  msg.id = id;
-  msg.msgType = MSGTYPE_ACK;
-
-  espmesh->sendToRoot(&msg,sizeof(msg));
-}
-
 void receiveUpMsg(int msgType) {
   bool shouldTurnGreen = (
-    (isVertical  && msgType == MSGTYPE_UP_VERTICAL) ||
-    (!isVertical && msgType == MSGTYPE_UP_HORIZONTAL)
+    (direction==msgType)
   );
+  Serial.printf("dir=%d\n",int(direction));
+  Serial.printf("msgType=%d\n",int(msgType));
+  Serial.printf("shouldTG=%d\n",int(shouldTurnGreen));
 
   if(shouldTurnGreen) {
     setState(STATE_ACTIVE_GREEN);
@@ -107,13 +107,13 @@ void onMsg(const EspMeshEvent &event) {
   const Msg *msg = (const Msg *) event.data;
 
   if(isMaster) {
-    if(msg->msgType == MSGTYPE_ACK) {
+    if(msg->msgType == MSGTYPE_PING) {
       uint8_t id = msg->id;
       if(id < N_OF_DEVICES)
         timestamp[id] = millis();
 
       if(DEBUG)
-        Serial.printf("ACK from id=%d\n", id);
+        Serial.printf("PING from id=%d\n", id);
     }
   } else {
     timestamp[0] = millis();
@@ -137,7 +137,6 @@ void onMsg(const EspMeshEvent &event) {
           Serial.printf("Received ERROR\n");
         break;
     }
-    sendAck();
   }
 }
 
@@ -186,10 +185,8 @@ void onBtn1Released(uint8_t pinBtn){
 void onBtn2Released(uint8_t pinBtn){
   Serial.println("BTN 2 pressed");
 
-  id--;
-  if(id < 0)
-    id = N_OF_DEVICES - 1;
-  Serial.printf("Device ID changed to %d\n", id);
+  direction=(direction+1)%DIRECTION_COUNT;
+  Serial.printf("Direction changed to %d\n", direction);
 }
 
 void setup() {
@@ -209,7 +206,7 @@ void setup() {
 
   setState(STATE_CONFIG);
   isMaster = false;
-  isVertical = false;
+  direction=DIRECTION_HORIZONTAL;
 
   enterGreenTime = millis();
 }
@@ -275,8 +272,8 @@ void masterLoop() {
     if((now - masterTime >= 6000)) {
       masterTime = now;
 
-      direction = !direction;
-      int msgType = (direction ? MSGTYPE_UP_HORIZONTAL
+      gameDirection = !gameDirection;
+      int msgType = (gameDirection ? MSGTYPE_UP_HORIZONTAL
                                : MSGTYPE_UP_VERTICAL);
 
       Msg msg;
@@ -289,12 +286,21 @@ void masterLoop() {
       receiveUpMsg(msgType);
     }
 
-    // TODO checkTimestamp
+    if(!checkTimestamp(1000)){
+      setState(STATE_CONFIG);
+    }
+
   }
 }
 
 void slaveLoop() {
-  // TODO
+  if(IoTBoard::runEvery(250,7)){
+    Msg msg;
+    msg.id = id;
+    msg.msgType = MSGTYPE_PING;
+
+    espmesh->sendToRoot(&msg,sizeof(msg));
+  }
 }
 
 void loop() {
