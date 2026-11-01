@@ -8,6 +8,8 @@
 #define N_OF_DEVICES 4
 #endif
 
+#define PING_ALIVE_THRESHOLD 1000
+
 enum State {
   STATE_CONFIG,
   STATE_ACTIVE_GREEN,
@@ -209,16 +211,16 @@ void setup() {
   semaphoreData.enterGreenTime = millis();
 }
 
-bool checkTimestamp(int epsilon) {
+bool areSlavesAlive() {
   int now = millis();
   for(int i = 0; i < N_OF_DEVICES; i++) {
-    // ignore master's own ID
+    // do not check master's own ID
     if(i == semaphoreData.id)
       continue;
 
-    if(now - gameData.timestamp[i] > epsilon) {
+    // if slave's timestamp is not fresh enough, consider it dead
+    if(now - gameData.timestamp[i] > PING_ALIVE_THRESHOLD)
       return false;
-    }
   }
   return true;
 }
@@ -260,7 +262,7 @@ void masterLoop() {
         Serial.println("Sending config broadcast message");
     }
 
-    if(checkTimestamp(500)) {
+    if(areSlavesAlive()) {
       setState(STATE_ACTIVE_RED);
       gameData.time = millis();
     }
@@ -284,7 +286,7 @@ void masterLoop() {
       receiveUpMsg(msgType); // update the master's semaphore too
     }
 
-    if(!checkTimestamp(1000))
+    if(!areSlavesAlive())
       setState(STATE_CONFIG);
   }
 }
