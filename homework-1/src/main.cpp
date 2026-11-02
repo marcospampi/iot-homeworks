@@ -4,10 +4,7 @@
 
 #define DEBUG 1
 
-#ifndef N_OF_DEVICES
-#define N_OF_DEVICES 4
-#endif
-
+#define MAX_SLAVE_COUNT 15
 #define PING_ALIVE_THRESHOLD 1000
 
 enum State {
@@ -31,7 +28,6 @@ enum Direction {
 
 typedef struct __attribute__((packed)) {
   uint8_t msgType;
-  uint8_t id;
 } Msg;
 
 struct Semaphore {
@@ -43,13 +39,22 @@ struct Semaphore {
   int enterRedTime;
 } semaphoreData;
 
+struct Slave {
+  uint8_t mac[6];
+  int timestamp;
+};
+
 struct Game {
+  int number_of_slaves;
   int upDirection;
   int time;
-  int timestamp[N_OF_DEVICES];
+
+  Slave slaves[MAX_SLAVE_COUNT];
 } gameData;
 
 int state;
+
+const uint8_t nullMAC[6] = { 0 }; // 00:00:00:00:00:00
 
 void setState(State newState) {
   if(DEBUG)
@@ -135,6 +140,37 @@ void receiveUpMsg(int msgType) {
   }
 }
 
+Slave *getSlaveFromMAC(const uint8_t *mac) {
+  // try to find slave among registered devices
+  for(int i = 0; i < MAX_SLAVE_COUNT; i++) {
+    Slave *slave = &gameData.slaves[i];
+
+    if(!memcmp(slave->mac, mac, 6))
+      return slave;
+  }
+
+  // device is not registered: try to find an empty slot to register it
+  for(int i = 0; i < MAX_SLAVE_COUNT; i++) {
+    Slave *slave = &gameData.slaves[i];
+
+    if(!memcmp(slave->mac, nullMAC, 6)) {
+      // the slot is empty: register this new slave
+      if(DEBUG) {
+        Serial.printf(
+          "Slave %x:%x:%x:%x:%x:%x assigned ID=%d",
+          mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], i
+        );
+      }
+
+      memcpy(slave->mac, mac, 6);
+      return slave;
+    }
+  }
+
+  // unrecognized device, and there are no more slots available
+  return NULL;
+}
+
 void onMsg(const EspMeshEvent &event) {
   if(DEBUG)
     Serial.printf("MeshEvent: len=%d\n", event.len);
@@ -145,12 +181,17 @@ void onMsg(const EspMeshEvent &event) {
 
   if(semaphoreData.isMaster) {
     if(msg->msgType == MSGTYPE_PING) {
-      int id = msg->id;
-      if(id > 0 && id < N_OF_DEVICES)
-        gameData.timestamp[id] = millis();
+      Slave *slave = getSlaveFromMAC(event.from);
+      if(slave)
+        slave->timestamp = millis();
 
-      if(DEBUG)
-        Serial.printf("PING from id=%d\n", id);
+      if(DEBUG) {
+        Serial.printf(
+            "PING from %x:%x:%x:%x:%x:%x\n",
+            slave->mac[0], slave->mac[1], slave->mac[2],
+            slave->mac[3], slave->mac[4], slave->mac[5]
+        );
+      }
     }
   } else {
     switch (msg->msgType) {
@@ -200,6 +241,7 @@ void onMeshEvent(const EspMeshEvent &event) {
         Serial.printf("MeshEvent Message\n");
       onMsg(event);
       break;
+
     case EspMeshEventType::ChildJoined:
     case EspMeshEventType::ChildLeft:
     default:
@@ -219,16 +261,13 @@ void printConfigSettings() {
   display->print(semaphoreData.direction ? "VERT." : "HORIZ.");
 }
 
-void onBtn1Released(uint8_t pinBtn){
+void onBtn1Released(uint8_t pinBtn) {
   Serial.println("BTN 1 pressed");
 
-  semaphoreData.id++;
-  if(semaphoreData.id >= N_OF_DEVICES)
-    semaphoreData.id = 0;
-  Serial.printf("Device ID changed to %d\n", semaphoreData.id);
+  // TODO
 }
 
-void onBtn2Released(uint8_t pinBtn){
+void onBtn2Released(uint8_t pinBtn) {
   Serial.println("BTN 2 pressed");
 
   semaphoreData.direction = (semaphoreData.direction + 1) % DIRECTION_COUNT;
@@ -260,21 +299,29 @@ void setup() {
 }
 
 bool areSlavesAlive() {
-  int now = millis();
-  for(int i = 0; i < N_OF_DEVICES; i++) {
-    // do not check master's own ID
-    if(i == semaphoreData.id)
+  const int now = millis();
+  int aliveCount = 0;
+
+  for(int i = 0; i < MAX_SLAVE_COUNT; i++) {
+    Slave *slave = &gameData.slaves[i];
+
+    // check if slave of ID=i exists
+    if(!memcmp(slave->mac, nullMAC, 6))
       continue;
 
     // if slave's timestamp is not fresh enough, consider it dead
-    if(now - gameData.timestamp[i] > PING_ALIVE_THRESHOLD)
-      return false;
+    if(now - slave->timestamp > PING_ALIVE_THRESHOLD) {
+      // forget this device
+      memset(slave->mac, 0, 6);
+    } else {
+      aliveCount++;
+    }
   }
-  return true;
+
+  return (aliveCount == gameData.number_of_slaves);
 }
 
 void sendToSlaves(const Msg &msg) {
-
   int numofdevices = esp_mesh_get_routing_table_size();
   if ( IoTBoard::runEvery(1000, 5) && DEBUG) {
     Serial.printf("Number of devices is %d\n", numofdevices);
@@ -298,7 +345,6 @@ void masterLoop() {
     // send a RESYNC message every 250ms
     if(IoTBoard::runEvery(250, 1)) {
       Msg msg;
-      msg.id = 0;
       msg.msgType = MSGTYPE_RESYNC;
 
       sendToSlaves(msg);
@@ -325,7 +371,6 @@ void masterLoop() {
                                           : MSGTYPE_UP_VERTICAL);
 
       Msg msg;
-      msg.id = 0;
       msg.msgType = msgType;
 
       sendToSlaves(msg);
@@ -341,7 +386,6 @@ void slaveLoop() {
   // send a PING message to master
   if(IoTBoard::runEvery(250, 7)) {
     Msg msg;
-    msg.id = semaphoreData.id;
     msg.msgType = MSGTYPE_PING;
 
     espmesh->sendToRoot(&msg,sizeof(msg));
