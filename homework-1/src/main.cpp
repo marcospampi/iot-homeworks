@@ -45,7 +45,7 @@ struct Slave {
 };
 
 struct Game {
-  int number_of_slaves;
+  int numberOfSlaves;
   int upDirection;
   int time;
 
@@ -252,9 +252,12 @@ void onMeshEvent(const EspMeshEvent &event) {
 void printConfigSettings() {
   display->setTextSize(1);
 
-  display->setCursor(4, 38);
-  display->print("[BTN1] ID:  ");
-  display->print(semaphoreData.id);
+  if ( semaphoreData.isMaster ) {
+    display->setCursor(4, 38);
+    display->print("[BTN1] SEMs:  ");
+    display->print(gameData.numberOfSlaves + 1);
+
+  }
 
   display->setCursor(4, 52);
   display->print("[BTN2] DIR: ");
@@ -263,8 +266,9 @@ void printConfigSettings() {
 
 void onBtn1Released(uint8_t pinBtn) {
   Serial.println("BTN 1 pressed");
-
-  // TODO
+  if ( semaphoreData.isMaster ) {
+    gameData.numberOfSlaves = 0; 
+  }
 }
 
 void onBtn2Released(uint8_t pinBtn) {
@@ -325,7 +329,11 @@ bool areSlavesAlive() {
     }
   }
 
-  return (aliveCount == gameData.number_of_slaves);
+  if ( aliveCount > gameData.numberOfSlaves ) {
+   gameData.numberOfSlaves = aliveCount;
+  }
+  
+  return (aliveCount == gameData.numberOfSlaves);
 }
 
 void sendToSlaves(const Msg &msg) {
