@@ -313,6 +313,13 @@ bool areSlavesAlive() {
     if(now - slave->timestamp > PING_ALIVE_THRESHOLD) {
       // forget this device
       memset(slave->mac, 0, 6);
+
+      if(DEBUG)
+        Serial.printf(
+            "Slave %x:%x:%x:%x:%x:%x disconnected\n",
+            slave->mac[0], slave->mac[1], slave->mac[2],
+            slave->mac[3], slave->mac[4], slave->mac[5]
+        );
     } else {
       aliveCount++;
     }
