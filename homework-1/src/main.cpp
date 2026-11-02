@@ -225,25 +225,22 @@ bool areSlavesAlive() {
   return true;
 }
 
-void masterBroadcast(const Msg &msg) {
-  // TODO: puliziari
-  // Msg msg;
-  // msg.id = id;
-  // msg.msgType = eventTy;
+void sendToSlaves(const Msg &msg) {
 
   int numofdevices = esp_mesh_get_routing_table_size();
-  if ( IoTBoard::runEvery(1000, 5)) {
+  if ( IoTBoard::runEvery(1000, 5) && DEBUG) {
     Serial.printf("Number of devices is %d\n", numofdevices);
   }
-  uint8_t me[6];
-  espmesh->getMac(me);
+
+  uint8_t masterMAC[6];
+  espmesh->getMac(masterMAC);
 
   uint8_t nodes[numofdevices][6];
   espmesh->getNodes(nodes, numofdevices);
 
   for ( int i = 0; i < numofdevices; ++i ) {
-    // non controllo a me stesso
-    if ( memcmp(me, nodes[i], sizeof(uint8_t[6])) == 0 ) continue;
+    // non controllo il master
+    if ( memcmp(masterMAC, nodes[i], sizeof(uint8_t[6])) == 0 ) continue;
     espmesh->sendTo(nodes[i], &msg, sizeof(Msg));
   }
 }
@@ -256,7 +253,7 @@ void masterLoop() {
       msg.id = 0;
       msg.msgType = MSGTYPE_RESYNC;
 
-      masterBroadcast(msg);
+      sendToSlaves(msg);
 
       if(DEBUG)
         Serial.println("Sending config broadcast message");
@@ -282,7 +279,7 @@ void masterLoop() {
       msg.id = 0;
       msg.msgType = msgType;
 
-      masterBroadcast(msg);
+      sendToSlaves(msg);
       receiveUpMsg(msgType); // update the master's semaphore too
     }
 
