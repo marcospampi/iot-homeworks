@@ -40,6 +40,7 @@ struct Semaphore {
 
   int direction;
   int enterGreenTime;
+  int enterRedTime;
 } semaphoreData;
 
 struct Game {
@@ -56,10 +57,22 @@ void setState(State newState) {
   state = newState;
 }
 
-void write_display(const char *txt) {
-  display->clearDisplay();
-  display->setCursor(0,0);
+void writeDisplay(const char *txt="", int time=-1, int16_t x=0, int16_t y=0) {
+  if(semaphoreData.isMaster) {
+    display->setTextSize(1);
+    display->setCursor(0, 0);
+    display->print("Master");
+  }
+
+  display->setTextSize(2);
+  display->setCursor(x, y);
   display->print(txt);
+
+  if(time >= 0) {
+    display->setCursor(50, 45);
+    display->print(time);
+    display->print("s");
+  }
   display->display();
 }
 
@@ -74,20 +87,42 @@ void config() {
     setLEDs(0, !digitalRead(LED_YELLOW), 0);
 }
 
+void activeRed() {
+  const int now = millis();
+  const int redTime = now - semaphoreData.enterRedTime;
+
+  setLEDs(1, 0, 0);
+
+  int countdown = (6000 - redTime + 999) / 1000;
+  if(countdown < 0)
+    countdown = 0;
+
+  display->clearDisplay();
+  writeDisplay("FERMATI", countdown, 22, 18);
+
+}
+
 void activeGreen() {
   const int now = millis();
   const int greenTime = now - semaphoreData.enterGreenTime;
 
-  if(greenTime < 4000)
-    setLEDs(0, 0, 1);
-  else if(greenTime < 5000)
-    setLEDs(0, 1, 0);
-  else
-    setState(STATE_ACTIVE_RED);
-}
+  int countdown = (6000 - greenTime + 999) / 1000;
+  if(countdown < 0)
+    countdown = 0;
 
-void activeRed() {
-  setLEDs(1, 0, 0);
+  display->clearDisplay();
+
+  if(greenTime < 5000) {
+    setLEDs(0, 0, 1);
+    writeDisplay("SGASA BRO", countdown, 10, 18);
+  } else if(greenTime < 6000) {
+    setLEDs(0, 1, 0);
+    writeDisplay("RALLENTA", countdown, 16, 18);
+  } else {
+    semaphoreData.enterRedTime = now + 1000;
+    setState(STATE_ACTIVE_RED);
+    activeRed();
+  }
 }
 
 void receiveUpMsg(int msgType) {
@@ -96,6 +131,7 @@ void receiveUpMsg(int msgType) {
     semaphoreData.enterGreenTime = millis();
   } else {
     setState(STATE_ACTIVE_RED);
+    semaphoreData.enterRedTime = millis();
   }
 }
 
@@ -156,7 +192,6 @@ void onMeshEvent(const EspMeshEvent &event) {
     case EspMeshEventType::BecameRoot:
       if(DEBUG)
         Serial.printf("MeshEvent BecameRoot\n");
-      write_display("Sono master");
       semaphoreData.isMaster = true;
       break;
 
@@ -209,6 +244,7 @@ void setup() {
   semaphoreData.isMaster       = false;
   semaphoreData.direction      = DIRECTION_HORIZONTAL;
   semaphoreData.enterGreenTime = millis();
+  semaphoreData.enterRedTime   = millis();
 }
 
 bool areSlavesAlive() {
@@ -262,6 +298,7 @@ void masterLoop() {
     if(areSlavesAlive()) {
       setState(STATE_ACTIVE_RED);
       gameData.time = millis();
+      semaphoreData.enterRedTime = millis();
     }
   }
 
@@ -306,6 +343,8 @@ void loop() {
   switch(state) {
     case STATE_CONFIG:
       config();
+      display->clearDisplay();
+      writeDisplay("CONFIG", -1, 28, 25);
       break;
 
     case STATE_ACTIVE_GREEN:
