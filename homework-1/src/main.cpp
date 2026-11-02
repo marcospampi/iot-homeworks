@@ -207,6 +207,18 @@ void onMeshEvent(const EspMeshEvent &event) {
   }
 }
 
+void printConfigSettings() {
+  display->setTextSize(1);
+
+  display->setCursor(4, 38);
+  display->print("[BTN1] ID:  ");
+  display->print(semaphoreData.id);
+
+  display->setCursor(4, 52);
+  display->print("[BTN2] DIR: ");
+  display->print(semaphoreData.direction ? "VERT." : "HORIZ.");
+}
+
 void onBtn1Released(uint8_t pinBtn){
   Serial.println("BTN 1 pressed");
 
@@ -344,7 +356,8 @@ void loop() {
     case STATE_CONFIG:
       config();
       display->clearDisplay();
-      writeDisplay("CONFIG", -1, 28, 25);
+      printConfigSettings();
+      writeDisplay("CONFIG", -1, 28, 16);
       break;
 
     case STATE_ACTIVE_GREEN:
