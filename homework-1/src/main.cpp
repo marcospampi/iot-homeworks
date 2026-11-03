@@ -5,7 +5,8 @@
 #define DEBUG 1
 
 #define MAX_SLAVE_COUNT 15
-#define PING_ALIVE_THRESHOLD 1000
+#define PING_ALIVE_THRESHOLD 1250
+#define SLAVE_PING_EVERY_MS 100
 
 enum State {
   STATE_CONFIG,
@@ -399,7 +400,7 @@ void masterLoop() {
 
 void slaveLoop() {
   // send a PING message to master
-  if(IoTBoard::runEvery(250, 7)) {
+  if(IoTBoard::runEvery(SLAVE_PING_EVERY_MS, 7)) {
     Msg msg;
     msg.msgType = MSGTYPE_PING;
 
