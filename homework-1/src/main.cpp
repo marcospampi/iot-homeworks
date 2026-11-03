@@ -181,19 +181,32 @@ void onMsg(const EspMeshEvent &event) {
   const Msg *msg = (const Msg *) event.data;
 
   if(semaphoreData.isMaster) {
-    if(msg->msgType == MSGTYPE_PING) {
-      Slave *slave = getSlaveFromMAC(event.from);
-      if(slave)
-        slave->timestamp = millis();
 
-      if(DEBUG) {
-        Serial.printf(
-            "PING from %x:%x:%x:%x:%x:%x\n",
-            slave->mac[0], slave->mac[1], slave->mac[2],
-            slave->mac[3], slave->mac[4], slave->mac[5]
-        );
+    switch ( msg->msgType ) {
+      case MSGTYPE_PING: {
+        
+        Slave *slave = getSlaveFromMAC(event.from);
+        if(slave)
+          slave->timestamp = millis();
+    
+        if(DEBUG) {
+          Serial.printf(
+              "PING from %x:%x:%x:%x:%x:%x\n",
+              slave->mac[0], slave->mac[1], slave->mac[2],
+              slave->mac[3], slave->mac[4], slave->mac[5]
+          );
+        }
+        break;
       }
+      case MSGTYPE_RESYNC: {
+        gameData.numberOfSlaves = 0;
+        break;
+      }
+      default:
+        break;
     }
+
+    
   } else {
     switch (msg->msgType) {
       case MSGTYPE_UP_VERTICAL:
@@ -257,7 +270,10 @@ void printConfigSettings() {
     display->setCursor(4, 38);
     display->print("[BTN1] SEMs:  ");
     display->print(gameData.numberOfSlaves + 1);
-
+  }
+  else {
+    display->setCursor(4, 38);
+    display->print("[BTN1] Reset ");
   }
 
   display->setCursor(4, 52);
@@ -269,6 +285,12 @@ void onBtn1Released(uint8_t pinBtn) {
   Serial.println("BTN 1 pressed");
   if ( semaphoreData.isMaster ) {
     gameData.numberOfSlaves = 0; 
+  }
+  else {
+    Msg msg = {
+      .msgType = MSGTYPE_RESYNC
+    };
+    espmesh->sendToRoot(&msg, sizeof(msg));
   }
 }
 
