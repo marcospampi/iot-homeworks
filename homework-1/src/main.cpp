@@ -313,7 +313,19 @@ void setup() {
   buttons->onBtn2Release(onBtn2Released);
 
   Serial.printf("Initializing mesh... ");
-  IoTBoard::init_espmesh(SSID, PASSWORD, onMeshEvent);
+
+  EspMeshConfig config; /* = {
+    .mesh_id = {0x77, 0x77, 0x77, 0x77, 0x77, 0x77},
+    .mesh_pass = ESPMESH_DEFAULT_PASS
+    };*/
+    
+  config.router_ssid = SSID;
+  config.router_pass = PASSWORD;
+  config.mesh_id[5] = 0x76;
+  config.on_event = onMeshEvent;
+  IoTBoard::init_espmesh(config);
+  //IoTBoard::init_espmesh(SSID, PASSWORD, onMeshEvent);
+  
   Serial.printf("Done\n");
 
   // set initial state
