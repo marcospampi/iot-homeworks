@@ -5,7 +5,7 @@
 #define DEBUG 1
 
 #define MAX_SLAVE_COUNT 15
-#define PING_ALIVE_THRESHOLD 1250
+#define PING_ALIVE_THRESHOLD 5000
 #define SLAVE_PING_EVERY_MS 100
 
 enum State {
@@ -313,18 +313,19 @@ bool areSlavesAlive() {
     // check if slave of ID=i exists
     if(!memcmp(slave->mac, nullMAC, 6))
       continue;
-
     // if slave's timestamp is not fresh enough, consider it dead
-    if(now - slave->timestamp > PING_ALIVE_THRESHOLD) {
+    int diff = now - slave->timestamp ;
+    if(diff > PING_ALIVE_THRESHOLD) {
       // forget this device
-      memset(slave->mac, 0, 6);
-
       if(DEBUG)
         Serial.printf(
-            "Slave %x:%x:%x:%x:%x:%x disconnected\n",
+            "Slave %x:%x:%x:%x:%x:%x disconnected (diff=%d)\n",
             slave->mac[0], slave->mac[1], slave->mac[2],
-            slave->mac[3], slave->mac[4], slave->mac[5]
+            slave->mac[3], slave->mac[4], slave->mac[5],
+            diff
         );
+      memset(slave->mac, 0, 6);
+
     } else {
       aliveCount++;
     }
