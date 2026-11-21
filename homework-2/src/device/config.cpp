@@ -30,7 +30,7 @@ class GroupCountCallbacks : public BLECharacteristicCallbacks {
 
 class ConfigState : public DeviceState {
     private:
-        BLEServer  *server;
+        BLEServer *server;
 
         #define SERVICE_UUID "e98ba5b6-9702-45ca-94e6-8707e05959e9"
         BLEService *service;
@@ -45,7 +45,7 @@ class ConfigState : public DeviceState {
         BLECharacteristic *device_count_characteristic; // master only
 
         #define GROUP_COUNT_UUID "4ad9f30e-f4c5-45ea-b474-da6f17e46db0"
-        BLECharacteristic *group_count_characteristic;  // master only
+        BLECharacteristic *group_count_characteristic; // master only
 
     public:
         void enter() override {
@@ -88,26 +88,25 @@ class ConfigState : public DeviceState {
         }
 
         void loop() override {
-            bool is_master_set = (is_master_characteristic->getLength() > 0);
-            bool group_id_set = (group_id_characteristic->getLength() > 0);
+            bool is_master_set    = (is_master_characteristic->getLength() > 0);
+            bool group_id_set     = (group_id_characteristic->getLength() > 0);
             bool device_count_set = (device_count_characteristic->getLength() > 0);
-            bool group_count_set = (group_count_characteristic->getLength() > 0);
+            bool group_count_set  = (group_count_characteristic->getLength() > 0);
 
-            if(!is_master_set || !group_id_set){
+            // check if 'is_master' and 'group_id' are set
+            if(!is_master_set || !group_id_set)
                 return;
-            }
-            if(settings.is_master){
-                if(!device_count_set || !group_count_set){
+
+            if(settings.is_master) {
+                // check if 'device_count' and 'group_count' are set
+                if(!device_count_set || !group_count_set)
                     return;
-                }
+
                 set_state(DEVICE_SYNC_MASTER);
-            }
-            else{
+            } else {
                 set_state(DEVICE_SYNC_SLAVE);
             }
         }
 };
 
 DeviceState *device_state_config = new ConfigState();
-
-// BLEDevice
