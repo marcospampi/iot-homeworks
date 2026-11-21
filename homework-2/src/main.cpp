@@ -2,9 +2,6 @@
 #include "semaphore.h"
 #include "device.h"
 
-#include "settings.h"
-Settings settings; //TODO: creare un file per questo
-
 void setup()
 {
   sleep(3);
