@@ -1,0 +1,34 @@
+#pragma once
+
+#include <iot_board.h>
+
+class SemaphoreState {
+    private:
+        static SemaphoreState *current_state;
+
+    protected:
+        int timer;
+
+    public:
+        static void set_state(SemaphoreState *new_state) {
+            current_state = new_state;
+            current_state->timer = millis();
+        }
+
+        static SemaphoreState *get_state() {
+            return current_state;
+        }
+
+        virtual void loop() = 0;
+};
+
+#define SEMAPHORE_GREEN    semaphore_state_green
+#define SEMAPHORE_YELLOW   semaphore_state_yellow
+#define SEMAPHORE_RED      semaphore_state_red
+#define SEMAPHORE_BLINKING semaphore_state_blinking
+
+extern SemaphoreState
+    *semaphore_state_green,
+    *semaphore_state_yellow,
+    *semaphore_state_red,
+    *semaphore_state_blinking;

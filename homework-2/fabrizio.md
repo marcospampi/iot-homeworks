@@ -17,6 +17,7 @@ state(config):
 	wait direction is set
 	if is_master:
 		wait device_count is set
+		wait group_count is set
 	
 	turn off BLE # crasha!
 	goto sync
