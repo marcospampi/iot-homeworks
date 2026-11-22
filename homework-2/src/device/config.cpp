@@ -3,6 +3,7 @@
 #include <iot_board.h>
 #include <BLEDevice.h>
 #include "settings.h"
+#include "protocol.h"
 
 class IsMasterCallback : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *c) {
@@ -38,6 +39,21 @@ class GroupCountCallbacks : public BLECharacteristicCallbacks {
     }
 };
 
+class PanIdCallbacks : public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *c) {
+        int value = c->getValue().toInt();
+        settings.pan_id = value;
+        Serial.printf("PanId = %d", value);
+    }
+};
+class PeerIdCallbacks : public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic *c) {
+        int value = c->getValue().toInt();
+        settings.peer_id = value;
+        Serial.printf("PeerId = %d", value);
+    }
+};
+
 class ConfigState : public DeviceState {
     private:
         BLEServer *server;
@@ -56,6 +72,13 @@ class ConfigState : public DeviceState {
 
         #define GROUP_COUNT_UUID "4ad9f30e-f4c5-45ea-b474-da6f17e46db0"
         BLECharacteristic *group_count_characteristic; // master only
+
+        #define PAN_ID_UUID "ed29dd09-ca4c-4e49-8f67-4cf88592da96"
+        BLECharacteristic *pan_id_characteristic; 
+
+        #define PEER_ID_UUID "68c79005-c3c4-404b-8023-12e5ed8684f318:35"
+        BLECharacteristic *peer_id_characteristic;
+
 
     public:
         void enter() override {
@@ -87,6 +110,19 @@ class ConfigState : public DeviceState {
             group_count_characteristic->setValue("");
             group_count_characteristic->setCallbacks(new GroupCountCallbacks());
 
+            pan_id_characteristic = service->createCharacteristic(PAN_ID_UUID,
+                BLECharacteristic::PROPERTY_READ |
+                BLECharacteristic::PROPERTY_WRITE);
+            pan_id_characteristic->setValue("");
+            pan_id_characteristic->setCallbacks(new PanIdCallbacks());
+
+            peer_id_characteristic = service->createCharacteristic(PEER_ID_UUID,
+                BLECharacteristic::PROPERTY_READ |
+                BLECharacteristic::PROPERTY_WRITE);
+            peer_id_characteristic->setValue("");
+            peer_id_characteristic->setCallbacks(new PeerIdCallbacks());
+
+
             service->start();
             server->start();
 
@@ -96,21 +132,25 @@ class ConfigState : public DeviceState {
 
             BLEDevice::startAdvertising();
         }
-
         void loop() override {
             bool is_master_set    = (is_master_characteristic->getLength() > 0);
             bool group_id_set     = (group_id_characteristic->getLength() > 0);
             bool device_count_set = (device_count_characteristic->getLength() > 0);
             bool group_count_set  = (group_count_characteristic->getLength() > 0);
+            bool pan_id_set  = (pan_id_characteristic->getLength() > 0);
+            bool peer_id_set  = (peer_id_characteristic->getLength() > 0);
 
             // check if 'is_master' and 'group_id' are set
-            if(!is_master_set || !group_id_set)
+            if(!pan_id_set || !peer_id_set || !is_master_set || !group_id_set)
                 return;
+
+            Protocol::init();
 
             if(settings.is_master) {
                 // check if 'device_count' and 'group_count' are set
                 if(!device_count_set || !group_count_set)
                     return;
+                
                 set_state(DEVICE_SYNC_MASTER);
             } else {
                 set_state(DEVICE_SYNC_SLAVE);

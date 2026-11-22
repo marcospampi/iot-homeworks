@@ -1,21 +1,36 @@
 #pragma once
+#include <cstdint>
+#include "messages.h"
 
-
-
-class Heartbeat {
+class Protocol {
 	public:
+		/// @brief  initializes zigbee
+		static void init();
 		/// @brief verifica che tutto è apposto
 		static bool ok();
 		
 		/// @brief loop
 		static void loop();
-		
+
+		/// @brief  sends advertise message in broadscast mode
+		static void advertise();
+
+		/// @brief sends gi nessage for group
+		/// @param group 
+		static void send_go_message(int group);
+	private:
 		/// @brief accetta un heatbeat
-		static void hearbeat(uint16_t device_id);
+		static void accept_heartbeat(uint16_t device_id);
+		static void accept_go(int);
+		static void accept_advertising(uint16_t device_id);
 };
 
 
-
+/**
+ * vericare che abbiamo i timestamp freschi e non facciano puzza di pesce
+ * loop che manda gli heartbeat
+ * accettare gli heartbeat
+ */
 
 /**
  *

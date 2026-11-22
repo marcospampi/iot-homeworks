@@ -1,5 +1,6 @@
 #include "device.h"
 #include "semaphore.h"
+#include "protocol.h"
 class SyncSlaveState : public DeviceState {
     public:
         void enter() override {
@@ -7,7 +8,9 @@ class SyncSlaveState : public DeviceState {
         }
 
         void loop() override {
-            // TODO
+            if ( Protocol::ok() ) {
+                
+            }
         }
 };
 

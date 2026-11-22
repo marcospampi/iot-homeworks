@@ -2,7 +2,9 @@
 #include "semaphore.h"
 #include "device.h"
 #include "settings.h"
-#include "heartbeat.h"
+#include "protocol.h"
+
+
 
 void setup()
 {
@@ -11,9 +13,8 @@ void setup()
   IoTBoard::init_serial();
   IoTBoard::init_display();
 
-  // IoTBoard::init_spi();
-  // IoTBoard::init_zigbee();
-
+  IoTBoard::init_spi();
+  IoTBoard::init_zigbee(); 
 
   Serial.println("Hello world!");
 
@@ -26,9 +27,9 @@ void setup()
 void loop() {
   DeviceState::get_state()->loop();
   SemaphoreState::get_state()->loop();
-  Heartbeat::loop();
+  Protocol::loop();
 
-  if(IoTBoard::runEvery(500), ) {
+  if(IoTBoard::runEvery(500)) {
     
     display->clearDisplay();
     display->setCursor(0,0);

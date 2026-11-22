@@ -31,7 +31,6 @@ state(sync, is_master):
 
 state(sync, not(is_master)):
 	wait advertisement
-	wait GO
 	goto loop
 
 state(sync|loop, knows_master):

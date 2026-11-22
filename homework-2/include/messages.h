@@ -13,4 +13,3 @@ struct Message {
 	int data;	// il parametro di GO
 };
 
-
