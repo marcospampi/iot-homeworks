@@ -2,7 +2,7 @@
 
 #include "semaphore.h"
 
-#define TIME 500
+#define TIME 1000
 
 class BlinkingState : public SemaphoreState {
     private:

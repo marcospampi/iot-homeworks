@@ -6,25 +6,35 @@
 
 class IsMasterCallback : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *c) {
-        settings.is_master = c->getValue().toInt();
+        int value = c->getValue().toInt();
+        settings.is_master = value;
+        Serial.printf("IsMaster = %d", value);
     }
 };
 
 class GroupIdCallback : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *c) {
-        settings.group_id = c->getValue().toInt();
+        int value = c->getValue().toInt();
+        settings.group_id = value;
+        Serial.printf("GroupId = %d", value);
+
     }
 };
 
 class DeviceCountCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *c) {
-        settings.device_count = c->getValue().toInt();
+        int value = c->getValue().toInt();
+        settings.device_count = value;
+        Serial.printf("DeviceCount = %d", value);
+
     }
 };
 
 class GroupCountCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *c) {
-        settings.group_count = c->getValue().toInt();
+        int value = c->getValue().toInt();
+        settings.group_count = value;
+        Serial.printf("GroupCount = %d", value);
     }
 };
 
@@ -101,7 +111,6 @@ class ConfigState : public DeviceState {
                 // check if 'device_count' and 'group_count' are set
                 if(!device_count_set || !group_count_set)
                     return;
-
                 set_state(DEVICE_SYNC_MASTER);
             } else {
                 set_state(DEVICE_SYNC_SLAVE);

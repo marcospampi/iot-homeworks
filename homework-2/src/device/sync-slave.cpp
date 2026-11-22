@@ -1,9 +1,9 @@
 #include "device.h"
-
+#include "semaphore.h"
 class SyncSlaveState : public DeviceState {
     public:
         void enter() override {
-            // TODO
+            SemaphoreState::set_state(SEMAPHORE_GREEN);
         }
 
         void loop() override {

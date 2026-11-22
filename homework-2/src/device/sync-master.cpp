@@ -1,9 +1,10 @@
 #include "device.h"
-
+#include "semaphore.h"
 class SyncMasterState : public DeviceState {
     public:
         void enter() override {
-            // TODO
+            Serial.println("Sono in")
+            SemaphoreState::set_state(SEMAPHORE_RED);
         }
 
         void loop() override {
