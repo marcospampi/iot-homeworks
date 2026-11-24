@@ -1,0 +1,145 @@
+<div class="flex flex-col lg:flex-row w-screen max-w-[96rem] mx-auto w-full  h-screen gap-8 p-8 ">
+  <div class="lg:w-1/3 xl:w-1/4 gap-8 space-y-4">
+
+
+    <div class="rounded-box bg-base-300 p-4 prose gap-4 space-y-4">
+      <h2 class="mb-0 max-md:text-lg md:mb-0">Configurazione</h2>
+      <section>
+        <label class="fieldset">
+          <legend class="fieldset-legend">802.15.4 Pan ID</legend>
+          <input type="text" class="input" placeholder="802.15.4 Pan ID" />
+          <p class="label">Imposta identificativo rete Pan 802.15.4</p>
+        </label>
+        <label class="fieldset">
+          <legend class="fieldset-legend">Gruppi</legend>
+          <select class="select text-end">
+            <option class="text-end" value="1">1</option>
+            <option class="text-end" value="2">2</option>
+            <option class="text-end" value="3">3</option>
+            <option class="text-end" value="4">4</option>
+          </select>
+          <p class="label">Imposta il numero di gruppi semaforici</p>
+        </label>
+
+      </section>
+      <div class="flex gap-4">
+        <button class="btn btn-soft btn-error">Annulla</button>
+        <button class="btn btn-primary flex-grow">Conferma</button>
+      </div>
+      <div class="space-y-4">
+        <div class="alert alert-info alert-soft">
+          Almeno un dispositivo deve essere connesso per poter configurare.
+        </div>
+        <div class="alert alert-error alert-soft">
+          Almeno un dispositivo deve essere connesso per poter configurare.
+        </div>
+
+      </div>
+
+    </div>
+    <div class="stats bg-base-300 w-full">
+      <div class="stat">
+        <div class="stat-title">Semafori collegati</div>
+        <div class="stat-value">{{devices().length}}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">Skibidi</div>
+        <div class="stat-value">1k+</div>
+      </div>
+    </div>
+  </div>
+  <div class="lg:w-2/3 xl:w-3/4 gap-8 space-y-4">
+    <nav class="navbar justify-end">
+      <button (click)="requestDevice()" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          class="size-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        Connetti dispositivo
+      </button>
+    </nav>
+
+    <ul class="list bg-base-300 rounded-box ">
+      @for(device of devices(); track device.id) {
+
+      <li class="list-row">
+        <div class="text-4xl font-thin opacity-30 tabular-nums">{{$index + 1}}</div>
+        <div>
+          <div class="size-6 rounded-full bg-green-500"></div>
+        </div>
+        <div class="list-col-grow">
+          <div>{{device.name}}</div>
+          <div class="text-xs font-semibold opacity-60">{{device.id}}</div>
+        </div>
+        <button class="btn btn-square btn-ghost">
+          <svg aria-label="Play" class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor">
+              <path d="M6 3L20 12 6 21 6 3z"></path>
+            </g>
+          </svg>
+        </button>
+      </li>
+      }
+      @empty {
+        <li class="list-row">
+          Nessun dispositivo collegato
+        </li>
+      }
+
+      <!--<li class="p-4 pb-2 text-xs opacity-60 tracking-wide"></li>-->
+
+      <!--<li class="list-row">
+        <div class="text-4xl font-thin opacity-30 tabular-nums">01</div>
+        <div><img class="size-10 rounded-box" alt="Tailwind CSS list item"
+            src="https://img.daisyui.com/images/profile/demo/1@94.webp" /></div>
+        <div class="list-col-grow">
+          <div>Dio Lupa</div>
+          <div class="text-xs uppercase font-semibold opacity-60">Remaining Reason</div>
+        </div>
+        <button class="btn btn-square btn-ghost">
+          <svg aria-label="Play" class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor">
+              <path d="M6 3L20 12 6 21 6 3z"></path>
+            </g>
+          </svg>
+        </button>
+      </li>
+
+      <li class="list-row">
+        <div class="text-4xl font-thin opacity-30 tabular-nums">02</div>
+        <div><img class="size-10 rounded-box" alt="Tailwind CSS list item"
+            src="https://img.daisyui.com/images/profile/demo/4@94.webp" /></div>
+        <div class="list-col-grow">
+          <div>Ellie Beilish</div>
+          <div class="text-xs uppercase font-semibold opacity-60">Bears of a fever</div>
+        </div>
+        <button class="btn btn-square btn-ghost">
+          <svg aria-label="Play" class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor">
+              <path d="M6 3L20 12 6 21 6 3z"></path>
+            </g>
+          </svg>
+        </button>
+      </li>
+
+      <li class="list-row">
+        <div class="text-4xl font-thin opacity-30 tabular-nums">03</div>
+        <div><img class="size-10 rounded-box" alt="Tailwind CSS list item"
+            src="https://img.daisyui.com/images/profile/demo/3@94.webp" /></div>
+        <div class="list-col-grow">
+          <div>Sabrino Gardener</div>
+          <div class="text-xs uppercase font-semibold opacity-60">Cappuccino</div>
+        </div>
+        <button class="btn btn-square btn-ghost">
+          <svg aria-label="Play" class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor">
+              <path d="M6 3L20 12 6 21 6 3z"></path>
+            </g>
+          </svg>
+        </button>
+      </li>-->
+
+    </ul>
+  </div>
+
+</div>
