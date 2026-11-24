@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iot_board.h>
+
 enum MessageType {
     MESSAGE_HEARTBEAT, // heatbeat di client e server
     MESSAGE_GO         // comando accendere i semafori
@@ -18,5 +20,5 @@ class ZigBeeService {
         static void send(uint8_t msgtype, uint8_t data);
         static void send_heartbeat();
 
-        static bool should_go_up(int group_id);
+        static bool should_go_up();
 };

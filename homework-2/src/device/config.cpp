@@ -1,7 +1,7 @@
 #include "device.h"
+#include "ble-service.h"
 
 #include <iot_board.h>
-#include <BLEDevice.h>
 #include "settings.h"
 
 // TODO remove all these
@@ -60,11 +60,8 @@ class GroupCountCallbacks : public BLECharacteristicCallbacks {
 class ConfigState : public DeviceState {
     public:
         void loop() override {
-            if(BLEService::can_play()) {
-                if(settings.is_master)
-                    set_state(DEVICE_SYNC_MASTER);
-                else
-                    set_state(DEVICE_SYNC_SLAVE);
+            if(BLEInterfaceService::can_play()) {
+                set_state(DEVICE_SYNC);
             }
         }
 };

@@ -1,4 +1,5 @@
 #include "ble-service.h"
+#include <BLEDevice.h>
 
 static BLEServer *server;
 
@@ -51,7 +52,7 @@ class CharacteristicCallbacks : public BLECharacteristicCallbacks {
     }
 } characteristic_callback;
 
-void BLEService::init() {
+void BLEInterfaceService::init() {
     BLEDevice::init("Gianni Vezzosi");
 
     server = BLEDevice::createServer();
@@ -113,11 +114,11 @@ void BLEService::init() {
     adv->setScanResponse(true);
 }
 
-bool BLEService::can_play() {
+bool BLEInterfaceService::can_play() {
     return (can_play_characteristic->getValue() == "1");
 }
 
-void BLEService::notify_semaphore_state(const char *val) {
+void BLEInterfaceService::notify_semaphore_state(const char *val) {
     semaphore_state_characteristic->setValue((const uint8_t *) val, strlen(val));
     semaphore_state_characteristic->notify();
 }

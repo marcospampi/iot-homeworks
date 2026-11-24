@@ -2,7 +2,8 @@
 #include "semaphore.h"
 #include "device.h"
 #include "settings.h"
-#include "heartbeat.h"
+#include "ble-service.h"
+#include "zigbee-service.h"
 
 void setup()
 {
@@ -13,7 +14,7 @@ void setup()
   IoTBoard::init_spi();
   IoTBoard::init_zigbee();
 
-  BLEService::init();
+  BLEInterfaceService::init();
   ZigBeeService::init();
 
   DeviceState::set_state(DEVICE_CONFIG);
@@ -24,7 +25,7 @@ void loop() {
   DeviceState::get_state()->loop();
   SemaphoreState::get_state()->loop();
 
-  if(IoTBoard::runEvery(500), ) {
+  if(IoTBoard::runEvery(500), 1) {
     display->clearDisplay();
     display->setCursor(0,0);
     display->printf("is_master: %d\n", settings.is_master);

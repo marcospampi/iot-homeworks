@@ -1,4 +1,5 @@
 #include "zigbee-service.h"
+#include "settings.h"
 
 #include <iot_board.h>
 
@@ -52,7 +53,7 @@ void ZigBeeService::set_peer_id(int id) {
 }
 
 void ZigBeeService::set_channel(int channel) {
-    zigbee->setChannel(DEFAULT_CHANNEL);
+    zigbee->setChannel(channel);
 }
 
 bool ZigBeeService::all_heartbeats_ok() {
@@ -67,9 +68,9 @@ bool ZigBeeService::all_heartbeats_ok() {
 }
 
 // TODO create a message queue
-static void send_packet(int id, const struct Message *msg) {
+static void send_packet(int id, struct Message *msg) {
     zigbee->startPacket();
-    zigbee->writeUnsignedBytes(msg, sizeof(struct Message));
+    zigbee->writeBytes((uint8_t *)msg, sizeof(struct Message));
     zigbee->sendPacket(id, true);
 
     // TODO
@@ -77,13 +78,13 @@ static void send_packet(int id, const struct Message *msg) {
     // while( !transmissionDone && (millis() - start_time < timeout))
     //     ...
     // return transmissionDone
-    return true;
+    // return true;
 }
 
 void ZigBeeService::send(uint8_t msgtype, uint8_t data) {
-    const struct Message msg = { msgtype, data };
+    struct Message msg = { msgtype, data };
 
-    if(settings.master) {
+    if(settings.is_master) {
         // send to all slaves
         for(int i = 1; i < settings.device_count; i++) {
             send_packet(ID_OFFSET + i, &msg);
@@ -95,14 +96,15 @@ void ZigBeeService::send(uint8_t msgtype, uint8_t data) {
 }
 
 void ZigBeeService::send_heartbeat() {
-    if(IoTBoard::runEvery(1000 / HEARTBEAT_FREQUENCY, 7)
+    if(IoTBoard::runEvery(1000 / HEARTBEAT_FREQUENCY, 7))
         send(MESSAGE_HEARTBEAT, 0);
 }
 
-bool should_go_up(int group_id) {
+bool ZigBeeService::should_go_up() {
+
     if(up_fresh) {
         up_fresh = false;
-        return (group_id == last_up_direction);
+        return (settings.group_id == last_up_direction);
     }
     return false;
 }

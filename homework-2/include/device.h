@@ -23,16 +23,10 @@ class DeviceState {
 };
 
 #define DEVICE_CONFIG device_state_config
-
-#define DEVICE_SYNC_SLAVE  device_state_sync_slave
-#define DEVICE_SYNC_MASTER device_state_sync_master
-
-#define DEVICE_LOOP_SLAVE  device_state_loop_slave
-#define DEVICE_LOOP_MASTER device_state_loop_master
+#define DEVICE_SYNC device_state_sync
+#define DEVICE_LOOP device_state_loop
 
 extern DeviceState
     *device_state_config,
-    *device_state_sync_slave,
-    *device_state_sync_master,
-    *device_state_loop_slave,
-    *device_state_loop_master;
+    *device_state_sync,
+    *device_state_loop;

@@ -2,8 +2,6 @@
 
 #include "semaphore.h"
 
-#define TIME 1000
-
 class YellowState : public SemaphoreState {
     public:
         void loop() override {
@@ -11,7 +9,7 @@ class YellowState : public SemaphoreState {
             digitalWrite(LED_YELLOW, HIGH);
             digitalWrite(LED_GREEN,  LOW);
 
-            if(millis() - timer > TIME)
+            if(millis() - timer > SEMAPHORE_YELLOW_TIME)
                 SemaphoreState::set_state(SEMAPHORE_RED);
         }
 };

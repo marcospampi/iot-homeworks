@@ -1,6 +1,6 @@
 #pragma once
 
-class BLEService {
+class BLEInterfaceService {
     public:
         static void init();
 
