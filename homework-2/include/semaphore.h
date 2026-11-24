@@ -2,9 +2,9 @@
 
 #include <iot_board.h>
 
-#define SEMAPHORE_RED_TIME 1000
+#define SEMAPHORE_RED_TIME    1000
 #define SEMAPHORE_YELLOW_TIME 1000
-#define SEMAPHORE_GREEN_TIME 1000
+#define SEMAPHORE_GREEN_TIME  1000
 #define SEMAPHORE_LOOP_TIME (SEMAPHORE_RED_TIME + SEMAPHORE_YELLOW_TIME + SEMAPHORE_GREEN_TIME)
 
 class SemaphoreState {
@@ -14,7 +14,6 @@ class SemaphoreState {
     protected:
         int timer;
 
-        // TODO implement this on states
         virtual void enter() {
             // do nothing
         }
