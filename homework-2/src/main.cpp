@@ -10,26 +10,21 @@ void setup()
   IoTBoard::init_leds();/// uwu
   IoTBoard::init_serial();
   IoTBoard::init_display();
+  IoTBoard::init_spi();
+  IoTBoard::init_zigbee();
 
-  // IoTBoard::init_spi();
-  // IoTBoard::init_zigbee();
-
-
-  Serial.println("Hello world!");
+  BLEService::init();
+  ZigBeeService::init();
 
   DeviceState::set_state(DEVICE_CONFIG);
   SemaphoreState::set_state(SEMAPHORE_BLINKING);
 }
 
-
-
 void loop() {
   DeviceState::get_state()->loop();
   SemaphoreState::get_state()->loop();
-  Heartbeat::loop();
 
   if(IoTBoard::runEvery(500), ) {
-    
     display->clearDisplay();
     display->setCursor(0,0);
     display->printf("is_master: %d\n", settings.is_master);

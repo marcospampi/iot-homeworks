@@ -9,10 +9,16 @@ class SemaphoreState {
     protected:
         int timer;
 
+        // TODO implement this on states
+        virtual void enter() {
+            // do nothing
+        }
+
     public:
         static void set_state(SemaphoreState *new_state) {
             current_state = new_state;
             current_state->timer = millis();
+            current_state->enter();
         }
 
         static SemaphoreState *get_state() {
