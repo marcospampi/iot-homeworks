@@ -23,21 +23,27 @@ static volatile bool up_fresh = false;
 static volatile int timestamp[MAX_PEERS];
 
 void on_zigbee_receive(rx_info_t *packet) {
-    // TODO check if pan_id == settings.pan_id
+    int from = packet->src_addr;
 
-    // TODO ...
-    // uint16_t from = packet->src_addr;
+    bool shouldAccept = (
+        packet->panid == settings.pan_id &&                         // ] Stiamo verificando che
+        ( ID_OFFSET <= from && from < ID_OFFSET + MAX_PEERS  ) &&   // ] viene da noi
+        packet->payload_length == sizeof(Message)                   // } verifichiamo la dimensione
 
-    // TODO
-    // if(msgtype == MESSAGE_GO) {
-    //   last_up_direction = data
-    //   up_fresh = true
-    // }
+    );
 
-    // TODO ho ricevuto un messaggio (HEARTBEAT o GO...)
-    // aggiorna timestamp di 'from'
-    // TODO importante controllate che
-    //     ID_OFFSET <= from < ID_OFFSET + MAX_PEERS
+    if (!shouldAccept) return;
+    
+    Message msg;
+    memcpy(&msg, packet->rx_data, sizeof(Message)); 
+
+    if ( msg.msgtype == MESSAGE_GO ) {
+        last_up_direction = msg.data;
+        up_fresh = true;
+    }
+
+    timestamp[from] = millis();
+
 }
 
 void ZigBeeService::init() {
@@ -101,7 +107,6 @@ void ZigBeeService::send_heartbeat() {
 }
 
 bool ZigBeeService::should_go_up() {
-
     if(up_fresh) {
         up_fresh = false;
         return (settings.group_id == last_up_direction);
